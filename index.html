@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawTeam Learn - 龙虾学习平台</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        lobster: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12' },
+                        ocean: { 50: '#f0f9ff', 100: '#e0f2fe', 500: '#0ea5e9', 600: '#0284c7' }
+                    },
+                    fontFamily: { 'lobster': ['"ZCOOL KuaiLe"', 'cursive'], 'sans': ['"Noto Sans SC"', 'system-ui', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Noto Sans SC', sans-serif; }
+        .claw-gradient { background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%); }
+        .ocean-gradient { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        @keyframes wave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .wave-anim { animation: wave 3s ease-in-out infinite; }
+        .progress-ring { transform: rotate(-90deg); }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-lobster-50 via-white to-ocean-50 min-h-screen">
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const Storage = {
+            get: (key, defaultValue = null) => { try { const data = localStorage.getItem(`clawteam_${key}`); return data ? JSON.parse(data) : defaultValue; } catch { return defaultValue; } },
+            set: (key, value) => { try { localStorage.setItem(`clawteam_${key}`, JSON.stringify(value)); } catch (e) {} }
+        };
+
+        const LEARNING_PATHS = [
+            {
+                id: 'openclaw-basic',
+                name: 'OpenClaw 基础入门',
+                description: '从零开始学习 OpenClaw 的核心概念',
+                icon: '🦞',
+                skills: [
+                    { id: 's1', name: '环境搭建', xp: 100 },
+                    { id: 's2', name: '第一个 Agent', xp: 150 },
+                    { id: 's3', name: '技能系统', xp: 200 },
+                    { id: 's4', name: '记忆管理', xp: 200 },
+                    { id: 's5', name: '多智能体协作', xp: 300 },
+                ]
+            },
+            {
+                id: 'clawteam-advanced',
+                name: 'ClawTeam 高级开发',
+                description: '深入理解多智能体协作框架',
+                icon: '🚀',
+                skills: [
+                    { id: 's6', name: '架构设计', xp: 300 },
+                    { id: 's7', name: '自定义技能', xp: 350 },
+                    { id: 's8', name: '性能优化', xp: 400 },
+                    { id: 's9', name: '安全加固', xp: 350 },
+                    { id: 's10', name: '生产部署', xp: 400 },
+                ]
+            },
+            {
+                id: 'ai-integration',
+                name: 'AI 集成实战',
+                description: '将 OpenClaw 与 AI 服务集成',
+                icon: '🤖',
+                skills: [
+                    { id: 's11', name: 'LLM 接入', xp: 250 },
+                    { id: 's12', name: '向量数据库', xp: 300 },
+                    { id: 's13', name: 'RAG 系统', xp: 350 },
+                    { id: 's14', name: '多模态处理', xp: 400 },
+                    { id: 's15', name: 'Agent 编排', xp: 450 },
+                ]
+            }
+        ];
+
+        const initData = () => {
+            if (!Storage.get('initialized_learn')) {
+                Storage.set('users', [
+                    { id: 1, username: 'admin', password: 'admin123', avatar: '🦞', xp: 5000, level: 15, streak: 30 },
+                    { id: 2, username: '龙虾小白', password: '123456', avatar: '🦐', xp: 450, level: 3, streak: 5 },
+                    { id: 3, username: '代码达人', password: '123456', avatar: '🐙', xp: 2800, level: 8, streak: 12 },
+                ]);
+                Storage.set('userSkills', {});
+                Storage.set('dailyCheckins', {});
+                Storage.set('initialized_learn', true);
+            }
+        };
+
+        const App = () => {
+            const [page, setPage] = useState('home');
+            const [user, setUser] = useState(null);
+
+            useEffect(() => {
+                initData();
+                const saved = Storage.get('currentUser');
+                if (saved) setUser(saved);
+            }, []);
+
+            const login = (u) => { setUser(u); Storage.set('currentUser', u); };
+            const logout = () => { setUser(null); Storage.set('currentUser', null); };
+
+            return (
+                <div className="min-h-screen">
+                    <Navbar user={user} onLogout={logout} onNavigate={setPage} page={page} />
+                    <main className="fade-in">
+                        {page === 'home' && <Home user={user} onNavigate={setPage} />}
+                        {page === 'paths' && <Paths user={user} />}
+                        {page === 'progress' && <Progress user={user} />}
+                        {page === 'login' && <Login onLogin={login} onNavigate={setPage} />}
+                    </main>
+                </div>
+            );
+        };
+
+        const Navbar = ({ user, onLogout, onNavigate, page }) => (
+            <nav className="glass sticky top-0 z-50 border-b border-lobster-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between h-16 items-center">
+                        <div className="flex items-center cursor-pointer" onClick={() => onNavigate('home')}>
+                            <div className="w-10 h-10 claw-gradient rounded-xl flex items-center justify-center text-white text-2xl mr-3 wave-anim">🦞</div>
+                            <div>
+                                <h1 className="text-2xl font-lobster font-bold text-lobster-700">ClawTeam</h1>
+                                <p className="text-xs text-lobster-500">学习平台</p>
+                            </div>
+                        </div>
+                        <div className="hidden md:flex items-center space-x-6">
+                            <button onClick={() => onNavigate('home')} className={`text-sm ${page === 'home' ? 'text-lobster-600' : 'text-gray-600'}`}>首页</button>
+                            <button onClick={() => onNavigate('paths')} className={`text-sm ${page === 'paths' ? 'text-lobster-600' : 'text-gray-600'}`}>学习路径</button>
+                            <button onClick={() => onNavigate('progress')} className={`text-sm ${page === 'progress' ? 'text-lobster-600' : 'text-gray-600'}`}>我的进度</button>
+                            {user ? (
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-xl">{user.avatar}</span>
+                                    <span className="text-sm font-bold">Lv.{user.level}</span>
+                                    <button onClick={onLogout} className="text-gray-400"><i className="fas fa-sign-out-alt"></i></button>
+                                </div>
+                            ) : (
+                                <button onClick={() => onNavigate('login')} className="claw-gradient text-white px-4 py-2 rounded-full text-sm">登录</button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
+
+        const Home = ({ user, onNavigate }) => {
+            const [checkedIn, setCheckedIn] = useState(false);
+            
+            useEffect(() => {
+                if (user) {
+                    const today = new Date().toDateString();
+                    const checkins = Storage.get('dailyCheckins', {});
+                    setCheckedIn(checkins[user.id] === today);
+                }
+            }, [user]);
+
+            const checkIn = () => {
+                if (!user) { onNavigate('login'); return; }
+                const today = new Date().toDateString();
+                const checkins = Storage.get('dailyCheckins', {});
+                checkins[user.id] = today;
+                Storage.set('dailyCheckins', checkins);
+                
+                user.xp += 50;
+                if (user.xp >= user.level * 500) {
+                    user.level += 1;
+                    alert(`🎉 升级！Lv.${user.level}`);
+                }
+                Storage.set('users', Storage.get('users').map(u => u.id === user.id ? user : u));
+                Storage.set('currentUser', user);
+                setCheckedIn(true);
+                window.location.reload();
+            };
+
+            return (
+                <div>
+                    <div className="relative overflow-hidden">
+                        <div className="absolute inset-0 claw-gradient opacity-10"></div>
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative text-center">
+                            <div className="inline-flex items-center justify-center w-24 h-24 claw-gradient rounded-3xl text-white text-5xl mb-8 wave-anim shadow-2xl">🦞</div>
+                            <h1 className="text-4xl md:text-6xl font-lobster font-bold text-gray-900 mb-6">ClawTeam <span className="text-lobster-600">Learn</span></h1>
+                            <p className="text-xl text-gray-600 mb-8">记录学习进度，获得技能认证<br/><span className="text-lobster-500">让学习可视化、游戏化</span></p>
+                            
+                            {user && (
+                                <button onClick={checkIn} disabled={checkedIn} className={`px-8 py-4 rounded-full text-lg font-medium mb-8 ${checkedIn ? 'bg-gray-200' : 'claw-gradient text-white'}`}>
+                                    {checkedIn ? '✅ 已打卡' : '🔥 每日打卡 +50 XP'}
+                                </button>
+                            )}
+                            
+                            <div className="flex justify-center gap-4">
+                                <button onClick={() => onNavigate('paths')} className="claw-gradient text-white px-8 py-4 rounded-full text-lg">开始学习</button>
+                                <button onClick={() => onNavigate('progress')} className="bg-white text-lobster-600 border-2 border-lobster-200 px-8 py-4 rounded-full text-lg">查看进度</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {user && (
+                        <div className="max-w-4xl mx-auto px-4 py-8">
+                            <div className="glass rounded-2xl p-6">
+                                <div className="flex items-center gap-6">
+                                    <div className="relative">
+                                        <svg className="w-24 h-24 progress-ring">
+                                            <circle cx="48" cy="48" r="40" stroke="#fed7aa" strokeWidth="8" fill="none"/>
+                                            <circle cx="48" cy="48" r="40" stroke="#f97316" strokeWidth="8" fill="none" 
+                                                strokeDasharray={`${((user.xp % (user.level * 500)) / (user.level * 500)) * 251} 251`}/>
+                                        </svg>
+                                        <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-lobster-600">{user.level}</div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-2xl">{user.avatar}</span>
+                                            <span className="text-xl font-bold">{user.username}</span>
+                                            {user.streak > 0 && <span className="text-orange-500">🔥 {user.streak}天</span>}
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div className="claw-gradient h-3 rounded-full" style={{width: `${(user.xp % (user.level * 500)) / (user.level * 500) * 100}%`}}></div>
+                                        </div>
+                                        <p className="text-sm text-gray-500 mt-1">{user.xp} XP · 还需 {user.level * 500 - (user.xp % (user.level * 500))} XP 升级</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+                        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">学习路径</h2>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            {LEARNING_PATHS.map(path => (
+                                <div key={path.id} className="glass rounded-2xl p-6 hover:shadow-xl transition-all cursor-pointer" onClick={() => onNavigate('paths')}>
+                                    <div className="text-5xl mb-4">{path.icon}</div>
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{path.name}</h3>
+                                    <p className="text-gray-500 text-sm mb-4">{path.description}</p>
+                                    <span className="text-lobster-600 text-sm">{path.skills.length} 个技能 →</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Paths = ({ user }) => {
+            const [selected, setSelected] = useState(null);
+            const [userSkills, setUserSkills] = useState({});
+            
+            useEffect(() => {
+                if (user) setUserSkills(Storage.get('userSkills', {})[user.id] || {});
+            }, [user]);
+
+            const complete = (skillId, xp) => {
+                if (!user) { alert('请先登录'); return; }
+                const all = Storage.get('userSkills', {});
+                if (!all[user.id]) all[user.id] = {};
+                all[user.id][skillId] = { completed: true, at: Date.now() };
+                Storage.set('userSkills', all);
+                setUserSkills(all[user.id]);
+                
+                user.xp += xp;
+                if (user.xp >= user.level * 500) user.level += 1;
+                Storage.set('users', Storage.get('users').map(u => u.id === user.id ? user : u));
+                Storage.set('currentUser', user);
+                alert(`✅ +${xp} XP`);
+            };
+
+            if (selected) {
+                const path = LEARNING_PATHS.find(p => p.id === selected);
+                const completed = path.skills.filter(s => userSkills[s.id]?.completed).length;
+                return (
+                    <div className="max-w-4xl mx-auto px-4 py-8">
+                        <button onClick={() => setSelected(null)} className="text-lobster-600 mb-4">← 返回</button>
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <div className="flex items-center gap-4 mb-4">
+                                <span className="text-5xl">{path.icon}</span>
+                                <div>
+                                    <h2 className="text-2xl font-bold">{path.name}</h2>
+                                    <p className="text-gray-500">{path.description}</p>
+                                </div>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="claw-gradient h-2 rounded-full" style={{width: `${(completed/path.skills.length)*100}%`}}></div>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-2">{completed}/{path.skills.length} 技能</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            {path.skills.map((skill, i) => {
+                                const done = userSkills[skill.id]?.completed;
+                                return (
+                                    <div key={skill.id} className={`glass rounded-2xl p-6 ${done ? 'border-2 border-green-400' : ''}`}>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${done ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                                    {done ? '✓' : i+1}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold">{skill.name}</h3>
+                                                    <span className="text-lobster-600 text-sm">+{skill.xp} XP</span>
+                                                </div>
+                                            </div>
+                                            {!done && user && (
+                                                <button onClick={() => complete(skill.id, skill.xp)} className="claw-gradient text-white px-4 py-2 rounded-full text-sm">完成</button>
+                                            )}
+                                            {done && <span className="text-green-500">已完成</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-8">选择学习路径</h2>
+                    <div className="grid md:grid-cols-3 gap-6">
+                        {LEARNING_PATHS.map(path => {
+                            const completed = path.skills.filter(s => userSkills[s.id]?.completed).length;
+                            return (
+                                <div key={path.id} className="glass rounded-2xl p-6 hover:shadow-xl cursor-pointer" onClick={() => setSelected(path.id)}>
+                                    <div className="text-5xl mb-4">{path.icon}</div>
+                                    <h3 className="text-xl font-bold mb-2">{path.name}</h3>
+                                    <p className="text-gray-500 text-sm mb-4">{path.description}</p>
+                                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                        <div className="claw-gradient h-2 rounded-full" style={{width: `${(completed/path.skills.length)*100}%`}}></div>
+                                    </div>
+                                    <span className="text-sm text-gray-400">{completed}/{path.skills.length} 完成</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const Progress = ({ user }) => {
+            if (!user) return <div className="text-center py-20">请先登录</div>;
+            
+            const userSkills = Storage.get('userSkills', {})[user.id] || {};
+            const completed = Object.keys(userSkills).length;
+            const total = LEARNING_PATHS.reduce((a, p) => a + p.skills.length, 0);
+            
+            return (
+                <div className="max-w-4xl mx-auto px-4 py-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-8">我的学习</h2>
+                    <div className="grid md:grid-cols-3 gap-6 mb-8">
+                        <div className="glass rounded-2xl p-6 text-center">
+                            <div className="text-4xl mb-2">📚</div>
+                            <div className="text-3xl font-bold text-lobster-600">{completed}</div>
+                            <div className="text-gray-500 text-sm">已掌握技能</div>
+                        </div>
+                        <div className="glass rounded-2xl p-6 text-center">
+                            <div className="text-4xl mb-2">🎯</div>
+                            <div className="text-3xl font-bold text-lobster-600">{Math.round((completed/total)*100)}%</div>
+                            <div className="text-gray-500 text-sm">总体进度</div>
+                        </div>
+                        <div className="glass rounded-2xl p-6 text-center">
+                            <div className="text-4xl mb-2">🔥</div>
+                            <div className="text-3xl font-bold text-lobster-600">{user.streak}</div>
+                            <div className="text-gray-500 text-sm">连续打卡</div>
+                        </div>
+                    </div>
+                    
+                    <div className="glass rounded-2xl p-6">
+                        <h3 className="text-lg font-bold mb-4">技能掌握情况</h3>
+                        {LEARNING_PATHS.map(path => {
+                            const pathCompleted = path.skills.filter(s => userSkills[s.id]?.completed).length;
+                            return (
+                                <div key={path.id} className="mb-4">
+                                    <div className="flex justify-between mb-1">
+                                        <span className="text-sm font-medium">{path.name}</span>
+                                        <span className="text-sm text-gray-500">{pathCompleted}/{path.skills.length}</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div className="claw-gradient h-2 rounded-full" style={{width: `${(pathCompleted/path.skills.length)*100}%`}}></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const Login = ({ onLogin, onNavigate }) => {
+            const [isLogin, setIsLogin] = useState(true);
+            const [form, setForm] = useState({ username: '', password: '' });
+            
+            const submit = (e) => {
+                e.preventDefault();
+                const users = Storage.get('users', []);
+                if (isLogin) {
+                    const user = users.find(u => u.username === form.username && u.password === form.password);
+                    if (user) { onLogin(user); onNavigate('home'); }
+                    else alert('用户名或密码错误');
+                } else {
+                    if (users.find(u => u.username === form.username)) { alert('用户名已存在'); return; }
+                    const newUser = { id: Date.now(), username: form.username, password: form.password, avatar: '🦐', xp: 0, level: 1, streak: 0 };
+                    Storage.set('users', [...users, newUser]);
+                    onLogin(newUser);
+                    onNavigate('home');
+                }
+            };
+            
+            return (
+                <div className="min-h-screen flex items-center justify-center px-4">
+                    <div className="glass rounded-3xl p-8 w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 claw-gradient rounded-2xl flex items-center justify-center text-white text-4xl mx-auto mb-4 wave-anim">🦞</div>
+                            <h2 className="text-2xl font-bold">{isLogin ? '登录' : '注册'}</h2>
+                        </div>
+                        <form onSubmit={submit} className="space-y-4">
+                            <input type="text" placeholder="用户名" value={form.username} onChange={e => setForm({...form, username: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200" required />
+                            <input type="password" placeholder="密码" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200" required />
+                            <button type="submit" className="w-full py-3 rounded-xl claw-gradient text-white font-medium">{isLogin ? '登录' : '注册'}</button>
+                        </form>
+                        <div className="mt-6 text-center">
+                            <button onClick={() => setIsLogin(!isLogin)} className="text-lobster-600 text-sm">{isLogin ? '还没有账号？注册' : '已有账号？登录'}</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
